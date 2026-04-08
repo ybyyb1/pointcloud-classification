@@ -90,8 +90,46 @@ class Stanford3DDataset(BaseDataset):
         # 处理后的数据目录
         self.processed_dir = os.path.join(self.data_dir, "processed")
 
+        # Kaggle环境特殊处理
+        self.is_kaggle = is_kaggle_environment()
+        if self.is_kaggle:
+            print("检测到Kaggle环境，启用特殊处理模式")
+            # 在Kaggle中，数据可能直接在data_dir中，而不是processed子目录
+            kaggle_h5 = os.path.join(self.data_dir, "stanford3d_dataset.h5")
+            if os.path.exists(kaggle_h5):
+                print(f"在Kaggle数据目录中找到HDF5文件: {kaggle_h5}")
+                # 临时修改processed_dir为data_dir，以便加载HDF5文件
+                self.processed_dir = self.data_dir
+
         # 加载数据
         self.load_data()
+
+    def _check_data_exists(self) -> bool:
+        """
+        检查数据是否已经存在
+        重写基类方法以支持Kaggle环境
+        """
+        # 首先检查是否有HDF5文件（Kaggle环境）
+        h5_in_data_dir = os.path.join(self.data_dir, "stanford3d_dataset.h5")
+        h5_in_processed = os.path.join(self.processed_dir, "stanford3d_dataset.h5")
+
+        if os.path.exists(h5_in_data_dir) or os.path.exists(h5_in_processed):
+            return True
+
+        # 然后检查原始数据目录
+        if os.path.exists(self.raw_data_dir):
+            area_dirs = [d for d in os.listdir(self.raw_data_dir)
+                         if d.startswith("Area_") and os.path.isdir(os.path.join(self.raw_data_dir, d))]
+            if area_dirs:
+                return True
+
+        # 最后检查NPZ文件
+        for split in ["train", "val", "test"]:
+            split_file = os.path.join(self.processed_dir, f"{split}_data.npz")
+            if os.path.exists(split_file):
+                return True
+
+        return False
 
     def download(self) -> None:
         """
@@ -495,11 +533,30 @@ class Stanford3DDataset(BaseDataset):
         """
         加载指定分割的数据
         """
+        # 在Kaggle环境中，优先尝试从HDF5加载
+        if self.is_kaggle:
+            h5_file = os.path.join(self.processed_dir, "stanford3d_dataset.h5")
+            if os.path.exists(h5_file):
+                print(f"Kaggle环境: 直接从HDF5文件加载: {h5_file}")
+                self._load_from_h5()
+                return
+            else:
+                print(f"Kaggle环境: HDF5文件不存在: {h5_file}")
+                print("尝试查找其他数据文件...")
+
         # 检查预处理数据是否存在
         split_file = os.path.join(self.processed_dir, f"{self.split}_data.npz")
 
         if not os.path.exists(split_file):
             print(f"预处理数据不存在: {split_file}")
+
+            # 在Kaggle环境中，如果有HDF5文件但没NPZ文件，直接加载HDF5
+            h5_file = os.path.join(self.processed_dir, "stanford3d_dataset.h5")
+            if os.path.exists(h5_file):
+                print(f"从HDF5文件加载: {h5_file}")
+                self._load_from_h5()
+                return
+
             print("开始预处理数据集...")
             self.preprocess()
 
