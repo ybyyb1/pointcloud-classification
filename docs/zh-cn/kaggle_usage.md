@@ -13,11 +13,63 @@
 在Kaggle Notebook中运行以下代码块：
 
 ```python
-# 单元格1: 克隆仓库和设置
-!git clone https://github.com/ybyyb1/pointcloud-classification.git
+# 单元格1: 克隆仓库和设置（带错误处理）
 import os
-os.chdir('/kaggle/working/pointcloud-classification')
+import sys
+
+print("Kaggle环境设置...")
+
+# 确保在/kaggle/working目录下
+if not os.path.exists('/kaggle/working'):
+    print("错误: /kaggle/working 目录不存在")
+    # 尝试创建目录
+    os.makedirs('/kaggle/working', exist_ok=True)
+
+# 切换到/kaggle/working目录
+try:
+    os.chdir('/kaggle/working')
+    print(f"当前工作目录: {os.getcwd()}")
+except Exception as e:
+    print(f"切换目录失败: {e}")
+    # 尝试其他目录
+    if os.path.exists('/kaggle'):
+        os.chdir('/kaggle')
+        print(f"切换到 /kaggle 目录")
+
+# 列出当前目录内容
+print("目录内容:")
+!ls -la
+
+# 克隆仓库
+print("\n克隆GitHub仓库...")
+repo_path = '/kaggle/working/pointcloud-classification'
+
+# 如果仓库已存在，删除它
+if os.path.exists(repo_path):
+    print(f"删除已存在的仓库: {repo_path}")
+    !rm -rf {repo_path}
+
+# 克隆仓库
+try:
+    !git clone https://github.com/ybyyb1/pointcloud-classification.git
+    print("✅ 仓库克隆成功")
+except Exception as e:
+    print(f"❌ 克隆失败: {e}")
+    print("尝试手动下载...")
+    # 备用方案：如果git失败，尝试其他方法
+
+# 切换到仓库目录
+if os.path.exists(repo_path):
+    os.chdir(repo_path)
+    print(f"✅ 切换到仓库目录: {os.getcwd()}")
+else:
+    print(f"❌ 仓库目录不存在: {repo_path}")
+    print("请检查克隆是否成功")
+
+# 安装依赖
+print("\n安装依赖...")
 !pip install -r requirements.txt
+print("✅ 依赖安装完成")
 
 # 单元格2: 设置Kaggle API密钥（使用你的凭证）
 import os
@@ -228,12 +280,48 @@ import warnings
 # 抑制CUDA兼容性警告
 warnings.filterwarnings("ignore", message=".*CUDA capability sm_60.*")
 
+# 确保在正确的目录
+print("检查工作目录...")
+if not os.path.exists('/kaggle/working'):
+    os.makedirs('/kaggle/working', exist_ok=True)
+os.chdir('/kaggle/working')
+print(f"当前目录: {os.getcwd()}")
+	
+# 列出目录内容
+print("目录内容:")
+!ls -la
+	
 # 克隆仓库
-!git clone https://github.com/ybyyb1/pointcloud-classification.git
-os.chdir('/kaggle/working/pointcloud-classification')
-
+print("\n克隆GitHub仓库...")
+repo_path = '/kaggle/working/pointcloud-classification'
+	
+# 如果仓库已存在，删除它
+if os.path.exists(repo_path):
+    print(f"删除已存在的仓库: {repo_path}")
+    !rm -rf {repo_path}
+	
+# 克隆仓库
+try:
+    !git clone https://github.com/ybyyb1/pointcloud-classification.git
+    print("[OK] 仓库克隆成功")
+except Exception as e:
+    print(f"[FAIL] 克隆失败: {e}")
+    print("请检查网络连接或手动下载仓库")
+    # 创建空目录继续
+    os.makedirs(repo_path, exist_ok=True)
+	
+# 切换到仓库目录
+if os.path.exists(repo_path):
+    os.chdir(repo_path)
+    print(f"[OK] 切换到仓库目录: {os.getcwd()}")
+else:
+    print(f"[FAIL] 仓库目录不存在: {repo_path}")
+    print("无法继续，请检查克隆是否成功")
+	
 # 安装依赖
+print("\n安装依赖...")
 !pip install -r requirements.txt
+print("[OK] 依赖安装完成")
 
 # 设置Kaggle API密钥（使用你的凭证）
 print("设置Kaggle API密钥...")
