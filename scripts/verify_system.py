@@ -30,10 +30,10 @@ def check_python_version():
     print(f"Python详细信息: {sys.version}")
 
     if python_version_tuple.major == 3 and python_version_tuple.minor >= 8:
-        print("✅ Python版本符合要求 (3.8+)")
+        print("[OK] Python版本符合要求 (3.8+)")
         return True
     else:
-        print("❌ Python版本不符合要求 (需要3.8+)")
+        print("[FAIL] Python版本不符合要求 (需要3.8+)")
         return False
 
 
@@ -58,21 +58,21 @@ def check_pytorch():
             cuda_version = torch.version.cuda
             print(f"CUDA版本: {cuda_version}")
         else:
-            print("⚠️  警告: 没有检测到GPU，训练将使用CPU（速度较慢）")
+            print("[WARN]  警告: 没有检测到GPU，训练将使用CPU（速度较慢）")
 
         # 检查基本功能
         x = torch.randn(2, 3)
         y = torch.randn(2, 3)
         z = x + y
 
-        print("✅ PyTorch检查通过")
+        print("[OK] PyTorch检查通过")
         return True
 
     except ImportError as e:
-        print(f"❌ PyTorch导入失败: {e}")
+        print(f"[FAIL] PyTorch导入失败: {e}")
         return False
     except Exception as e:
-        print(f"❌ PyTorch检查失败: {e}")
+        print(f"[FAIL] PyTorch检查失败: {e}")
         return False
 
 
@@ -103,18 +103,18 @@ def check_project_structure():
     all_dirs_ok = True
     for directory in required_dirs:
         if os.path.exists(directory):
-            print(f"  ✅ {directory}/")
+            print(f"  [OK] {directory}/")
         else:
-            print(f"  ❌ {directory}/ (缺失)")
+            print(f"  [FAIL] {directory}/ (缺失)")
             all_dirs_ok = False
 
     print("\n检查关键文件...")
     all_files_ok = True
     for file_path in required_files:
         if os.path.exists(file_path):
-            print(f"  ✅ {file_path}")
+            print(f"  [OK] {file_path}")
         else:
-            print(f"  ❌ {file_path} (缺失)")
+            print(f"  [FAIL] {file_path} (缺失)")
             all_files_ok = False
 
     return all_dirs_ok and all_files_ok
@@ -137,21 +137,21 @@ def check_imports():
     for module_name, classes in modules_to_check:
         try:
             module = importlib.import_module(module_name)
-            print(f"✅ {module_name} 导入成功")
+            print(f"[OK] {module_name} 导入成功")
 
             # 检查类
             for class_name in classes:
                 if hasattr(module, class_name):
-                    print(f"    ✅ {class_name} 存在")
+                    print(f"    [OK] {class_name} 存在")
                 else:
-                    print(f"    ❌ {class_name} 不存在")
+                    print(f"    [FAIL] {class_name} 不存在")
                     all_imports_ok = False
 
         except ImportError as e:
-            print(f"❌ {module_name} 导入失败: {e}")
+            print(f"[FAIL] {module_name} 导入失败: {e}")
             all_imports_ok = False
         except Exception as e:
-            print(f"❌ {module_name} 检查出错: {e}")
+            print(f"[FAIL] {module_name} 检查出错: {e}")
             all_imports_ok = False
 
     return all_imports_ok
@@ -173,18 +173,18 @@ def check_kaggle_integration():
 
     for file_path in kaggle_files:
         if os.path.exists(file_path):
-            print(f"  ✅ {file_path}")
+            print(f"  [OK] {file_path}")
         else:
-            print(f"  ❌ {file_path} (缺失)")
+            print(f"  [FAIL] {file_path} (缺失)")
             all_files_ok = False
 
     # 检查kaggle.json.example
     kaggle_example = "kaggle.json.example"
     if os.path.exists(kaggle_example):
-        print(f"  ✅ {kaggle_example}")
+        print(f"  [OK] {kaggle_example}")
         print(f"    提示: 复制此文件为kaggle.json并填入你的API密钥")
     else:
-        print(f"  ⚠️  {kaggle_example} (缺失但可选)")
+        print(f"  [WARN]  {kaggle_example} (缺失但可选)")
 
     return all_files_ok
 
@@ -202,14 +202,14 @@ def check_github_config():
             content = f.read()
 
         if github_url in content:
-            print(f"✅ README中包含正确的GitHub链接: {github_url}")
+            print(f"[OK] README中包含正确的GitHub链接: {github_url}")
         else:
-            print(f"❌ README中未找到GitHub链接: {github_url}")
+            print(f"[FAIL] README中未找到GitHub链接: {github_url}")
             print(f"   当前链接应为: {github_url}")
             return False
 
     except Exception as e:
-        print(f"❌ 读取README失败: {e}")
+        print(f"[FAIL] 读取README失败: {e}")
         return False
 
     return True
@@ -228,21 +228,21 @@ def check_training_script():
 
     for script_path in scripts_to_check:
         if os.path.exists(script_path):
-            print(f"✅ {script_path} 存在")
+            print(f"[OK] {script_path} 存在")
 
             # 检查文件是否可执行
             try:
                 with open(script_path, 'r') as f:
                     first_line = f.readline().strip()
                     if first_line.startswith("#!/usr/bin/env python"):
-                        print(f"    ✅ 可执行脚本")
+                        print(f"    [OK] 可执行脚本")
                     else:
-                        print(f"    ⚠️  缺少shebang行")
+                        print(f"    [WARN]  缺少shebang行")
             except:
                 pass
 
         else:
-            print(f"❌ {script_path} 缺失")
+            print(f"[FAIL] {script_path} 缺失")
             all_scripts_ok = False
 
     return all_scripts_ok
@@ -254,7 +254,7 @@ def run_quick_test():
 
     tests = [
         ("创建配置对象", "from config.base_config import SystemConfig; config = SystemConfig(); print(f'项目: {config.project_name}')"),
-        ("创建虚拟模型", "from models.base_model import BaseModel; import torch; model = BaseModel(); print(f'模型创建成功')"),
+        ("创建具体模型", "from models.model_factory import create_model; model = create_model('point_transformer'); print(f'模型创建成功: {model.__class__.__name__}')"),
         ("检查训练器", "from training.trainer import Trainer; print(f'训练器可用')"),
     ]
 
@@ -263,9 +263,9 @@ def run_quick_test():
     for test_name, test_code in tests:
         try:
             exec(test_code, globals())
-            print(f"✅ {test_name}")
+            print(f"[OK] {test_name}")
         except Exception as e:
-            print(f"❌ {test_name} 失败: {e}")
+            print(f"[FAIL] {test_name} 失败: {e}")
             all_tests_passed = False
 
     return all_tests_passed
@@ -308,7 +308,7 @@ def main():
     total = len(results)
 
     for check_name, result in results.items():
-        status = "✅ 通过" if result else "❌ 失败"
+        status = "[OK] 通过" if result else "[FAIL] 失败"
         print(f"{check_name}: {status}")
         if result:
             passed += 1
@@ -316,14 +316,14 @@ def main():
     print(f"\n通过: {passed}/{total}")
 
     if passed == total:
-        print("\n🎉 所有检查通过！系统已准备就绪。")
+        print("\n[SUCCESS] 所有检查通过！系统已准备就绪。")
         print("\n下一步:")
         print("1. 本地使用: python main.py download-scanobjectnn")
         print("2. Kaggle使用: 查看 docs/kaggle_usage.md")
         print("3. 训练模型: python scripts/train.py --experiment test")
         return 0
     else:
-        print("\n⚠️  部分检查未通过，请根据上面的提示解决问题。")
+        print("\n[WARN]  部分检查未通过，请根据上面的提示解决问题。")
         print("\n常见问题解决:")
         print("1. 安装依赖: pip install -r requirements.txt")
         print("2. 检查Python版本: 需要Python 3.8+")

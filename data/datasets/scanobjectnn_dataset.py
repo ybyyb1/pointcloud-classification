@@ -3,6 +3,7 @@ ScanObjectNN数据集加载器
 """
 
 import os
+import sys
 import numpy as np
 import h5py
 import urllib.request
@@ -14,6 +15,74 @@ import torch
 
 from .base_dataset import BaseDataset
 from config import DatasetConfig, DatasetType, SCANOBJECTNN_CLASSES, SCANOBJECTNN_CLASS_TO_ID, SCANOBJECTNN_ID_TO_CLASS
+
+
+def is_kaggle_environment() -> bool:
+    """检查是否在Kaggle环境中运行"""
+    return os.path.exists('/kaggle') or 'KAGGLE_KERNEL_RUN_TYPE' in os.environ
+
+
+def download_from_kaggle(dataset_name: str, version: str, output_dir: str) -> str:
+    """
+    从Kaggle数据集下载
+
+    Args:
+        dataset_name: Kaggle数据集名称（如 'hkustvgd/scanobjectnn'）
+        version: 数据集版本（'main_split' 或 'pb_t50_rs_split'）
+        output_dir: 输出目录
+
+    Returns:
+        str: 下载的文件路径
+    """
+    try:
+        # 导入kaggle API
+        try:
+            from kaggle.api.kaggle_api_extended import KaggleApi
+        except ImportError:
+            print("Kaggle API未安装，尝试安装...")
+            import subprocess
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "kaggle"])
+            from kaggle.api.kaggle_api_extended import KaggleApi
+
+        # 初始化API
+        api = KaggleApi()
+        api.authenticate()
+
+        print(f"从Kaggle数据集 {dataset_name} 下载 {version}...")
+
+        # 下载数据集
+        api.dataset_download_files(dataset_name, path=output_dir, unzip=True)
+
+        # 查找下载的文件
+        h5_file = os.path.join(output_dir, f"{version}.h5")
+
+        if os.path.exists(h5_file):
+            print(f"Kaggle下载成功: {h5_file}")
+            return h5_file
+        else:
+            # 尝试在解压后的目录中查找
+            import glob
+            h5_files = glob.glob(os.path.join(output_dir, "**", "*.h5"), recursive=True)
+            for file in h5_files:
+                if version in file:
+                    print(f"找到文件: {file}")
+                    return file
+
+            # 如果没找到特定版本，返回第一个.h5文件
+            if h5_files:
+                print(f"使用找到的文件: {h5_files[0]}")
+                return h5_files[0]
+            else:
+                raise FileNotFoundError(f"在Kaggle数据集中未找到.h5文件")
+
+    except Exception as e:
+        print(f"Kaggle下载失败: {e}")
+        print("请确保已安装kaggle API: pip install kaggle")
+        print("并配置了Kaggle API密钥")
+        print("或者手动下载数据集:")
+        print(f"   !kaggle datasets download -d {dataset_name}")
+        print(f"   !unzip {dataset_name.split('/')[-1]}.zip -d {output_dir}")
+        raise
 
 
 class ScanObjectNNDataset(BaseDataset):
@@ -53,23 +122,67 @@ class ScanObjectNNDataset(BaseDataset):
         # 创建数据目录
         os.makedirs(self.data_dir, exist_ok=True)
 
-        # ScanObjectNN数据集URL（示例，实际URL可能需要调整）
-        base_url = "https://github.com/hkust-vgd/scanobjectnn/raw/master/h5_files/"
-        filename = f"{self.version}.h5"
-        url = f"{base_url}{filename}"
+        # 首先检查是否在Kaggle环境中
+        if is_kaggle_environment():
+            try:
+                print("检测到Kaggle环境，尝试从Kaggle数据集下载...")
+                kaggle_dataset = "hkustvgd/scanobjectnn"
+                downloaded_file = download_from_kaggle(kaggle_dataset, self.version, self.data_dir)
+                # 如果下载的文件路径与预期不同，将其移动到预期位置
+                if downloaded_file != self.h5_file:
+                    import shutil
+                    shutil.copy2(downloaded_file, self.h5_file)
+                    print(f"文件已复制到: {self.h5_file}")
+                return
+            except Exception as e:
+                print(f"Kaggle下载失败，将尝试备用URL: {e}")
 
-        try:
-            # 下载文件
-            print(f"从 {url} 下载...")
-            urllib.request.urlretrieve(url, self.h5_file)
-            print(f"下载完成: {self.h5_file}")
-        except Exception as e:
-            print(f"下载失败: {e}")
-            print("请手动下载ScanObjectNN数据集:")
-            print(f"1. 访问: https://github.com/hkust-vgd/scanobjectnn")
-            print(f"2. 下载文件: {filename}")
-            print(f"3. 保存到: {self.h5_file}")
-            raise
+        # 备用方案：尝试多个可能的URL
+        filename = f"{self.version}.h5"
+        urls_to_try = []
+
+        # 1. 使用配置中的URL
+        if self.data_url:
+            if self.data_url.endswith('.h5'):
+                urls_to_try.append(self.data_url)
+            else:
+                # 假设是基础URL，添加文件名
+                if self.data_url.endswith('/'):
+                    urls_to_try.append(f"{self.data_url}{filename}")
+                else:
+                    urls_to_try.append(f"{self.data_url}/{filename}")
+
+        # 2. 添加常见的GitHub URL
+        base_urls = [
+            "https://github.com/hkust-vgd/scanobjectnn/raw/master/h5_files/",
+            "https://raw.githubusercontent.com/hkust-vgd/scanobjectnn/master/h5_files/",
+        ]
+        for base_url in base_urls:
+            urls_to_try.append(f"{base_url}{filename}")
+
+        last_exception = None
+
+        for url in urls_to_try:
+            try:
+                print(f"尝试从 {url} 下载...")
+                urllib.request.urlretrieve(url, self.h5_file)
+                print(f"下载完成: {self.h5_file}")
+                return
+            except Exception as e:
+                print(f"下载失败: {e}")
+                last_exception = e
+                continue
+
+        # 所有URL都失败
+        print(f"所有下载尝试都失败: {last_exception}")
+        print("请手动下载ScanObjectNN数据集:")
+        print(f"1. 访问: https://github.com/hkust-vgd/scanobjectnn")
+        print(f"2. 下载文件: {filename}")
+        print(f"3. 保存到: {self.h5_file}")
+        print("或者使用Kaggle数据集:")
+        print(f"   !kaggle datasets download -d hkustvgd/scanobjectnn")
+        print(f"   !unzip scanobjectnn.zip -d {self.data_dir}")
+        raise last_exception
 
     def preprocess(self) -> None:
         """
