@@ -100,6 +100,38 @@ def create_data_loaders(config, logger):
             pin_memory=True
         )
 
+    elif dataset_type == "stanford3d":
+        logger.info(f"使用Stanford3D数据集")
+
+        from data.datasets.stanford3d_dataset import Stanford3DDataset
+
+        train_dataset = Stanford3DDataset(config.dataset, split="train")
+        val_dataset = Stanford3DDataset(config.dataset, split="val")
+        test_dataset = Stanford3DDataset(config.dataset, split="test")
+
+        import torch
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset,
+            batch_size=config.dataset.batch_size,
+            shuffle=True,
+            num_workers=config.dataset.num_workers,
+            pin_memory=True
+        )
+        val_loader = torch.utils.data.DataLoader(
+            val_dataset,
+            batch_size=config.dataset.batch_size,
+            shuffle=False,
+            num_workers=config.dataset.num_workers,
+            pin_memory=True
+        )
+        test_loader = torch.utils.data.DataLoader(
+            test_dataset,
+            batch_size=config.dataset.batch_size,
+            shuffle=False,
+            num_workers=config.dataset.num_workers,
+            pin_memory=True
+        )
+
     else:
         raise ValueError(f"不支持的数据集类型: {dataset_type}")
 

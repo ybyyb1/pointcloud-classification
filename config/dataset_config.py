@@ -29,6 +29,19 @@ S3DIS_CONFIG = DatasetConfig(
     use_augmentation=True
 )
 
+STANFORD3D_CONFIG = DatasetConfig(
+    dataset_type=DatasetType.STANFORD3D,
+    data_dir="./data/stanford3d",
+    num_points=1024,
+    batch_size=32,
+    stanford3d_areas=[1, 2, 3, 4, 5, 6],
+    stanford3d_classes_to_include=[
+        "beam", "board", "bookcase", "ceiling", "chair", "clutter", "column",
+        "door", "floor", "sofa", "stairs", "table", "wall", "window"
+    ],
+    use_augmentation=True
+)
+
 # ScanObjectNN类别列表（15个类别）
 SCANOBJECTNN_CLASSES = [
     "bag", "bin", "box", "cabinet", "chair", "desk", "display", "door",
@@ -38,6 +51,16 @@ SCANOBJECTNN_CLASSES = [
 # ScanObjectNN类别到ID的映射
 SCANOBJECTNN_CLASS_TO_ID = {cls: i for i, cls in enumerate(SCANOBJECTNN_CLASSES)}
 SCANOBJECTNN_ID_TO_CLASS = {i: cls for i, cls in enumerate(SCANOBJECTNN_CLASSES)}
+
+# Stanford3D类别列表（14个类别）
+STANFORD3D_CLASSES = [
+    "beam", "board", "bookcase", "ceiling", "chair", "clutter", "column",
+    "door", "floor", "sofa", "stairs", "table", "wall", "window"
+]
+
+# Stanford3D类别到ID的映射
+STANFORD3D_CLASS_TO_ID = {cls: i for i, cls in enumerate(STANFORD3D_CLASSES)}
+STANFORD3D_ID_TO_CLASS = {i: cls for i, cls in enumerate(STANFORD3D_CLASSES)}
 
 # S3DIS到ScanObjectNN的类别映射
 S3DIS_TO_SCANOBJECTNN_MAPPING = {
@@ -55,7 +78,7 @@ def get_dataset_config(dataset_name: str) -> DatasetConfig:
     根据数据集名称获取配置
 
     Args:
-        dataset_name: 数据集名称，支持 "scanobjectnn", "s3dis"
+        dataset_name: 数据集名称，支持 "scanobjectnn", "s3dis", "stanford3d"
 
     Returns:
         DatasetConfig: 数据集配置对象
@@ -65,6 +88,8 @@ def get_dataset_config(dataset_name: str) -> DatasetConfig:
         return SCANOBJECTNN_CONFIG
     elif dataset_name == "s3dis":
         return S3DIS_CONFIG
+    elif dataset_name == "stanford3d":
+        return STANFORD3D_CONFIG
     else:
         raise ValueError(f"未知的数据集: {dataset_name}")
 
@@ -85,6 +110,8 @@ def get_class_names(dataset_name: str) -> List[str]:
     elif dataset_name == "s3dis":
         # S3DIS使用映射后的类别
         return list(set(S3DIS_TO_SCANOBJECTNN_MAPPING.values()))
+    elif dataset_name == "stanford3d":
+        return STANFORD3D_CLASSES
     else:
         raise ValueError(f"未知的数据集: {dataset_name}")
 

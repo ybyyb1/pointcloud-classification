@@ -12,6 +12,7 @@ class DatasetType(Enum):
     """数据集类型枚举"""
     SCANOBJECTNN = "scanobjectnn"
     S3DIS = "s3dis"
+    STANFORD3D = "stanford3d"
     CUSTOM = "custom"
 
 
@@ -51,6 +52,13 @@ class DatasetConfig:
     s3dis_classes_to_include: List[str] = field(default_factory=lambda: [
         "ceiling", "floor", "wall", "beam", "column", "window", "door",
         "table", "chair", "sofa", "bookcase", "board", "clutter"
+    ])
+
+    # Stanford3D特定配置
+    stanford3d_areas: List[int] = field(default_factory=lambda: [1, 2, 3, 4, 5, 6])
+    stanford3d_classes_to_include: List[str] = field(default_factory=lambda: [
+        "beam", "board", "bookcase", "ceiling", "chair", "clutter", "column",
+        "door", "floor", "sofa", "stairs", "table", "wall", "window"
     ])
 
     # 数据集分割

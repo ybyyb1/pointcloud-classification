@@ -6,6 +6,7 @@
 from .base_dataset import BaseDataset
 from .scanobjectnn_dataset import ScanObjectNNDataset, create_scanobjectnn_dataloader
 from .s3dis_dataset import S3DISDataset, create_s3dis_classification_dataset
+from .stanford3d_dataset import Stanford3DDataset, create_stanford3d_dataloader
 
 __all__ = [
     "BaseDataset",
@@ -13,4 +14,6 @@ __all__ = [
     "create_scanobjectnn_dataloader",
     "S3DISDataset",
     "create_s3dis_classification_dataset",
+    "Stanford3DDataset",
+    "create_stanford3d_dataloader",
 ]
