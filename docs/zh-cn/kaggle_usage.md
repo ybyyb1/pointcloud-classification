@@ -745,6 +745,147 @@ os.environ['KAGGLE_USERNAME'] = secrets.get_secret("KAGGLE_USERNAME")
 os.environ['KAGGLE_KEY'] = secrets.get_secret("KAGGLE_KEY")
 ```
 
+## Kaggle数据集上传指南
+
+你已经成功从Stanford3dDataset_v1.2构建了类似ScanObjectNN的目标分类数据集，并完成了预处理。现在可以将预处理后的数据上传到Kaggle，以便在云端直接使用，避免每次重新下载和预处理。
+
+### 为什么需要上传预处理数据？
+
+1. **环境隔离**：Kaggle是云端环境，无法访问你的本地文件
+2. **效率提升**：预处理后的HDF5文件仅115MB，而原始数据70GB
+3. **时间节省**：直接使用预处理数据，避免在Kaggle上重新运行预处理
+4. **资源节约**：减少Kaggle GPU时间的浪费
+
+### 预处理结果统计
+
+✅ **预处理成功完成：**
+- 提取了 **9832个物体实例**，分布在 **14个类别** 中
+- 生成了 **115MB的HDF5文件** (`stanford3d_dataset.h5`)
+- 训练集：**6882个样本**，测试集：**2950个样本**
+- 每个点云采样到 **1024个点**
+
+**类别分布：**
+```
+beam: 159, board: 137, bookcase: 584, ceiling: 384, chair: 1363
+clutter: 3882, column: 254, door: 543, floor: 284, sofa: 55
+stairs: 17, table: 455, wall: 1547, window: 168
+```
+
+### 步骤1：准备预处理数据
+
+确保预处理已完成：
+```bash
+# 如果尚未运行，执行预处理
+python scripts/preprocess_stanford3d.py
+```
+
+预处理文件位于：`data/stanford3d/processed/`
+- `stanford3d_dataset.h5` (115MB) - 主要训练文件
+- `metadata.json` - 元数据信息
+- `train_data.npz`, `val_data.npz`, `test_data.npz` - 原始分割数据
+
+### 步骤2：创建Kaggle数据集
+
+1. **访问Kaggle**：https://www.kaggle.com/datasets
+2. **点击"New Dataset"**
+3. **填写信息：**
+   - **数据集名称**：`stanford3d-processed`（建议：`ybyyb1/stanford3d-processed`）
+   - **描述**：Stanford3D Dataset v1.2 Preprocessed for Object Classification
+   - **类别**：Computer Vision → Point Clouds
+4. **上传文件：**
+   - 选择 `data/stanford3d/processed/stanford3d_dataset.h5`
+   - （可选）上传 `metadata.json` 作为额外信息
+5. **发布数据集**
+
+### 步骤3：在Kaggle中使用预处理数据
+
+#### 方案A：直接使用预处理数据（推荐）
+```python
+# 单元格1: 设置环境
+import os
+os.chdir('/kaggle/working')
+!git clone https://github.com/ybyyb1/pointcloud-classification.git
+%cd pointcloud-classification
+!pip install -r requirements.txt
+
+# 单元格2: 下载预处理数据
+!kaggle datasets download -d ybyyb1/stanford3d-processed
+!unzip stanford3d-processed.zip -d /kaggle/working/data/stanford3d
+
+# 单元格3: 直接训练
+!python scripts/train.py \
+  --experiment stanford3d_kaggle \
+  --epochs 50 \
+  --batch_size 32 \
+  --kaggle \
+  --model point_transformer \
+  --dataset stanford3d \
+  --data_dir /kaggle/working/data/stanford3d
+```
+
+#### 方案B：与完整示例集成
+```python
+# 在完整示例中替换数据集下载部分
+# 原代码：
+# !kaggle datasets download -d sankalpsagar/stanford3ddataset
+# !unzip stanford3ddataset.zip -d /kaggle/working/data/
+
+# 改为：
+!kaggle datasets download -d ybyyb1/stanford3d-processed
+!mkdir -p /kaggle/working/data/stanford3d
+!unzip stanford3d-processed.zip -d /kaggle/working/data/stanford3d/
+```
+
+### 验证数据集
+
+上传后验证数据集：
+```python
+import h5py
+import numpy as np
+
+h5_file = '/kaggle/working/data/stanford3d/stanford3d_dataset.h5'
+with h5py.File(h5_file, 'r') as f:
+    print(f"训练样本: {f['train_points'].shape}")
+    print(f"测试样本: {f['test_points'].shape}")
+    print(f"类别数量: {f.attrs['num_classes']}")
+    print(f"类别名称: {f.attrs['class_names']}")
+```
+
+### 优势对比
+
+| 方案 | 数据大小 | Kaggle下载时间 | 预处理时间 | 资源占用 | 推荐程度 |
+|------|----------|----------------|------------|----------|----------|
+| **重新下载原始数据** | 70GB | 30-60分钟 | 10-20分钟 | 高 | ★☆☆☆☆ |
+| **使用现有Kaggle数据集** | 70GB | 30-60分钟 | 10-20分钟 | 高 | ★★☆☆☆ |
+| **使用预处理数据** | **115MB** | **1-2分钟** | **0分钟** | **低** | **★★★★★** |
+
+### 注意事项
+
+1. **数据集更新**：如果重新预处理数据，需要更新Kaggle数据集
+2. **版本控制**：建议使用版本号，如`stanford3d-processed-v1`
+3. **许可证**：Stanford3D数据集有特定使用条款，确保遵守
+4. **引用**：如果发表研究，请引用原始Stanford3D论文
+
+### 故障排除
+
+**问题：Kaggle数据集下载失败**
+```python
+# 检查数据集名称
+!kaggle datasets list -s stanford3d
+# 确保已接受数据集使用条款
+```
+
+**问题：HDF5文件无法读取**
+```python
+# 检查文件完整性
+import h5py
+try:
+    with h5py.File('stanford3d_dataset.h5', 'r') as f:
+        print("文件正常")
+except Exception as e:
+    print(f"文件损坏: {e}")
+```
+
 ## 资源
 
 - [Kaggle Notebook文档](https://www.kaggle.com/docs/notebooks)
