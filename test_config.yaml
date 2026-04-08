@@ -1,0 +1,154 @@
+author: ''
+data_dir: ./data
+dataset:
+  batch_size: 32
+  data_dir: ./data
+  dataset_type: !!python/object/apply:config.base_config.DatasetType
+  - scanobjectnn
+  jitter_std: 0.01
+  num_points: 1024
+  num_workers: 4
+  random_seed: 42
+  rotation_range: !!python/tuple
+  - 0
+  - 360
+  s3dis_area:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  s3dis_classes_to_include:
+  - ceiling
+  - floor
+  - wall
+  - beam
+  - column
+  - window
+  - door
+  - table
+  - chair
+  - sofa
+  - bookcase
+  - board
+  - clutter
+  s3dis_url: http://buildingparser.stanford.edu/dataset
+  scale_range: !!python/tuple
+  - 0.8
+  - 1.2
+  scanobjectnn_url: https://github.com/hkust-vgd/scanobjectnn/raw/master/h5_files/main_split
+  scanobjectnn_version: main_split
+  shuffle: true
+  test_ratio: 0.15
+  train_ratio: 0.7
+  translation_range: !!python/tuple
+  - -0.2
+  - 0.2
+  use_augmentation: true
+  val_ratio: 0.15
+description: 基于点云数据的室内场景三维物体分类系统
+experiment_name: exp_001
+experiment_tags: []
+inference:
+  batch_size: 16
+  confidence_threshold: 0.5
+  gpu_id: 0
+  model_path: ./checkpoints/best_model.pth
+  save_pointclouds: false
+  top_k: 3
+  use_gpu: true
+  visualization_dir: ./visualizations
+  visualize_results: true
+log_dir: ./logs
+model:
+  activation: relu
+  dgcnn_dropout: 0.5
+  dgcnn_emb_dims: 1024
+  dgcnn_k: 20
+  input_channels: 3
+  model_type: !!python/object/apply:config.base_config.ModelType
+  - point_transformer
+  num_classes: 15
+  point_transformer_attn_drop_rate: 0.1
+  point_transformer_depth: 6
+  point_transformer_dim: 512
+  point_transformer_drop_rate: 0.1
+  point_transformer_heads: 8
+  point_transformer_mlp_ratio: 4.0
+  point_transformer_qkv_bias: true
+  pointnet2_sa_layers:
+  - mlp:
+    - 64
+    - 64
+    - 128
+    npoint: 512
+    nsample: 32
+    radius: 0.2
+  - mlp:
+    - 128
+    - 128
+    - 256
+    npoint: 128
+    nsample: 64
+    radius: 0.4
+  - mlp:
+    - 256
+    - 512
+    - 1024
+    npoint: null
+    nsample: null
+    radius: null
+  pointnet_dropout: 0.3
+  pointnet_mlp_layers:
+  - 64
+  - 128
+  - 1024
+  pointnet_use_tnet: true
+  use_batch_norm: true
+model_dir: ./models
+output_dir: ./output
+project_name: Test Project
+root_dir: .
+training:
+  batch_size: 32
+  best_model_metric: val_accuracy
+  checkpoint_dir: ./checkpoints
+  clip_grad_norm: 1.0
+  cosine_t_max: 300
+  early_stopping_patience: 20
+  epochs: 300
+  gradient_accumulation_steps: 1
+  kaggle_gpu_memory_limit: null
+  kaggle_output_dir: /kaggle/working
+  label_smoothing: 0.1
+  learning_rate: 0.001
+  loss_function: cross_entropy
+  momentum: 0.9
+  optimizer: adamw
+  plateau_factor: 0.5
+  plateau_patience: 10
+  save_checkpoint_interval: 10
+  scheduler: cosine
+  step_gamma: 0.1
+  step_milestones:
+  - 100
+  - 200
+  use_amp: true
+  weight_decay: 0.01
+ui:
+  cli_enabled: true
+  cli_progress_style: bar
+  cli_show_progress: true
+  cli_theme: dark
+  console_log: true
+  desktop_enabled: false
+  desktop_theme: default
+  desktop_window_size: !!python/tuple
+  - 1200
+  - 800
+  log_file: ./logs/system.log
+  log_level: INFO
+use_wandb: false
+version: 1.0.0
+wandb_project: pointcloud-classification
