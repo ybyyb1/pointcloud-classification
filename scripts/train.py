@@ -21,6 +21,7 @@ from training.trainer import Trainer, KaggleTrainer
 from training.callbacks import EarlyStopping, ModelCheckpoint, ProgressLogger, CSVLogger
 from training.metrics import ConfusionMatrixMetric
 from utils.logger import setup_logger, log_experiment_config
+from config.base_config import DatasetType, ModelType
 
 
 def setup_experiment(config: SystemConfig, experiment_name: str):
@@ -240,7 +241,12 @@ def setup_callbacks(config, experiment_dir, logger):
 def train_model(config_path: str = None,
                 experiment_name: str = "exp_001",
                 use_kaggle: bool = False,
-                num_epochs: int = None):
+                num_epochs: int = None,
+                data_dir: str = None,
+                model_type: str = None,
+                dataset_type: str = None,
+                batch_size: int = None,
+                learning_rate: float = None):
     """
     训练模型主函数
 
@@ -249,6 +255,11 @@ def train_model(config_path: str = None,
         experiment_name: 实验名称
         use_kaggle: 是否使用Kaggle优化
         num_epochs: 训练轮数
+        data_dir: 数据目录（覆盖配置）
+        model_type: 模型类型（覆盖配置）
+        dataset_type: 数据集类型（覆盖配置）
+        batch_size: 批次大小（覆盖配置）
+        learning_rate: 学习率（覆盖配置）
     """
     # 加载配置
     if config_path:
@@ -259,6 +270,26 @@ def train_model(config_path: str = None,
     # 更新训练轮数
     if num_epochs:
         config.training.epochs = num_epochs
+
+    # 更新数据目录
+    if data_dir:
+        config.dataset.data_dir = data_dir
+
+    # 更新模型类型
+    if model_type:
+        config.model.model_type = ModelType(model_type)
+
+    # 更新数据集类型
+    if dataset_type:
+        config.dataset.dataset_type = DatasetType(dataset_type)
+
+    # 更新批次大小
+    if batch_size:
+        config.dataset.batch_size = batch_size
+
+    # 更新学习率
+    if learning_rate:
+        config.training.learning_rate = learning_rate
 
     # 设置实验环境
     experiment_dir, logger = setup_experiment(config, experiment_name)
@@ -388,7 +419,12 @@ def main():
             config_path=args.config,
             experiment_name=args.experiment,
             use_kaggle=args.kaggle,
-            num_epochs=args.epochs
+            num_epochs=args.epochs,
+            data_dir=args.data_dir,
+            model_type=args.model,
+            dataset_type=args.dataset,
+            batch_size=args.batch_size,
+            learning_rate=args.learning_rate
         )
 
         print("\n" + "=" * 60)

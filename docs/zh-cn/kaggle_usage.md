@@ -267,6 +267,73 @@ od.download("https://www.kaggle.com/datasets/hkustvgd/scanobjectnn")
   --kaggle
 ```
 
+### 使用Stanford3D数据集
+
+项目现在支持Stanford3D数据集（Stanford3dDataset_v1.2），包含14个室内物体类别：
+- **14个类别**: beam, board, bookcase, ceiling, chair, clutter, column, door, floor, sofa, stairs, table, wall, window
+
+#### 选项1: 使用现有数据集（推荐）
+
+如果你的本地已有`data/Stanford3dDataset_v1.2/`目录，系统会自动检测并使用：
+
+```python
+# 在Kaggle Notebook中
+!python scripts/train.py \
+  --experiment stanford3d_training \
+  --epochs 50 \
+  --batch_size 32 \
+  --kaggle \
+  --model point_transformer \
+  --dataset stanford3d \
+  --data_dir /kaggle/working/data/stanford3d
+```
+
+系统会自动从`/kaggle/input/`目录或本地目录查找Stanford3D数据集。
+
+#### 选项2: 从Kaggle下载Stanford3D数据集
+
+Kaggle上有Stanford3D数据集可用：
+
+```python
+# 方法1: 从Kaggle数据集下载
+!kaggle datasets download -d sankalpsagar/stanford3ddataset
+!unzip stanford3ddataset.zip -d /kaggle/working/data/
+
+# 方法2: 使用项目自动下载
+!python main.py download-stanford3d --data_dir /kaggle/working/data/stanford3d
+```
+
+#### 选项3: 自定义预处理
+
+如果只需要特定区域或类别，可以自定义配置：
+
+```python
+from config import SystemConfig, DatasetType
+
+config = SystemConfig(
+    dataset=SystemConfig.dataset.__class__(
+        dataset_type=DatasetType.STANFORD3D,
+        data_dir="/kaggle/working/data/stanford3d_custom",
+        num_points=1024,
+        batch_size=32,
+        stanford3d_areas=[1, 2, 3],  # 仅处理区域1-3
+        stanford3d_classes_to_include=["chair", "table", "door"],  # 特定类别
+        train_ratio=0.7,
+        val_ratio=0.15,
+        test_ratio=0.15
+    )
+)
+```
+
+#### Stanford3D数据集特点
+
+1. **数据来源**: Stanford大型室内场景数据集
+2. **类别**: 14个室内建筑和家具类别
+3. **实例数量**: 约5000+个物体实例
+4. **点云密度**: 高密度点云（数千到数万个点）
+5. **预处理**: 自动采样到1024个点，归一化处理
+6. **分割**: 支持随机分割（70/15/15）或按区域分割
+
 ## 完整的Kaggle Notebook示例
 
 以下是Kaggle notebook的完整示例，包含错误处理和验证：
@@ -396,6 +463,146 @@ print("\n🎉 Kaggle训练流程完成！")
 print(f"模型检查点保存在: {checkpoint_dir}")
 print(f"可视化结果保存在: /kaggle/working/visualizations")
 ```
+
+## 完整的Kaggle Notebook示例：Stanford3D数据集训练
+
+以下是专门针对Stanford3D数据集的Kaggle notebook完整示例：
+
+```python
+# 单元格1: 设置和验证
+import os
+import sys
+import warnings
+
+# 抑制CUDA兼容性警告
+warnings.filterwarnings("ignore", message=".*CUDA capability sm_60.*")
+
+# 确保在正确的目录
+print("检查工作目录...")
+if not os.path.exists('/kaggle/working'):
+    os.makedirs('/kaggle/working', exist_ok=True)
+os.chdir('/kaggle/working')
+print(f"当前目录: {os.getcwd()}")
+    
+# 列出目录内容
+print("目录内容:")
+!ls -la
+    
+# 克隆仓库
+print("\n克隆GitHub仓库...")
+repo_path = '/kaggle/working/pointcloud-classification'
+    
+# 如果仓库已存在，删除它
+if os.path.exists(repo_path):
+    print(f"删除已存在的仓库: {repo_path}")
+    !rm -rf {repo_path}
+    
+# 克隆仓库
+try:
+    !git clone https://github.com/ybyyb1/pointcloud-classification.git
+    print("[OK] 仓库克隆成功")
+except Exception as e:
+    print(f"[FAIL] 克隆失败: {e}")
+    print("请检查网络连接或手动下载仓库")
+    # 创建空目录继续
+    os.makedirs(repo_path, exist_ok=True)
+    
+# 切换到仓库目录
+if os.path.exists(repo_path):
+    os.chdir(repo_path)
+    print(f"[OK] 切换到仓库目录: {os.getcwd()}")
+else:
+    print(f"[FAIL] 仓库目录不存在: {repo_path}")
+    print("无法继续，请检查克隆是否成功")
+    
+# 安装依赖
+print("\n安装依赖...")
+!pip install -r requirements.txt
+print("[OK] 依赖安装完成")
+
+# 设置Kaggle API密钥
+print("设置Kaggle API密钥...")
+os.environ['KAGGLE_USERNAME'] = 'ybyyb1'
+os.environ['KAGGLE_KEY'] = 'KGAT_e15b251e1961531282207d55cc009ceb'
+
+# 验证系统
+print("验证系统...")
+!python scripts/verify_system.py
+
+# 单元格2: Stanford3D数据集准备
+print("\n准备Stanford3D数据集...")
+
+# 选项1: 从Kaggle下载Stanford3D数据集
+print("选项1: 从Kaggle下载Stanford3D数据集...")
+!kaggle datasets download -d sankalpsagar/stanford3ddataset
+!unzip stanford3ddataset.zip -d /kaggle/working/data/
+
+# 选项2: 使用项目内置预处理（如果已下载原始数据）
+# print("选项2: 使用内置预处理...")
+# !python main.py download-stanford3d --data_dir /kaggle/working/data/stanford3d
+
+print("[OK] 数据集准备完成")
+
+# 单元格3: 训练Stanford3D模型
+print("\n开始训练Stanford3D模型...")
+
+# 训练配置
+experiment_name = "stanford3d_kaggle_training"
+epochs = 50  # Kaggle限制，建议30-50轮
+batch_size = 32  # Stanford3D数据集较大，使用较大批次大小
+
+train_cmd = f"""
+python scripts/train.py \
+  --experiment {experiment_name} \
+  --epochs {epochs} \
+  --batch_size {batch_size} \
+  --kaggle \
+  --model point_transformer \
+  --dataset stanford3d \
+  --data_dir /kaggle/working/data/stanford3d
+"""
+
+print(f"执行命令:\n{train_cmd}")
+!{train_cmd}
+
+# 单元格4: 评估和可视化
+print("\n评估Stanford3D模型...")
+
+# 查找最新的检查点
+checkpoint_dir = f"/kaggle/working/pointcloud-classification/checkpoints/{experiment_name}"
+if os.path.exists(checkpoint_dir):
+    import glob
+    checkpoint_files = glob.glob(os.path.join(checkpoint_dir, "*.pth"))
+    if checkpoint_files:
+        latest_checkpoint = max(checkpoint_files, key=os.path.getctime)
+        print(f"使用检查点: {latest_checkpoint}")
+        
+        # 评估
+        !python main.py evaluate \
+          --checkpoint {latest_checkpoint} \
+          --dataset stanford3d \
+          --data_dir /kaggle/working/data/stanford3d
+        
+        # 可视化
+        !python main.py visualize \
+          --dataset stanford3d \
+          --num_samples 5 \
+          --output_dir /kaggle/working/stanford3d_visualizations
+    else:
+        print("未找到检查点文件")
+else:
+    print(f"检查点目录不存在: {checkpoint_dir}")
+
+print("\n🎉 Stanford3D数据集训练完成！")
+print(f"模型检查点保存在: {checkpoint_dir}")
+print(f"可视化结果保存在: /kaggle/working/stanford3d_visualizations")
+```
+
+**注意事项:**
+1. **数据集路径**: 确保`--data_dir`指向正确的Stanford3D数据集路径
+2. **批次大小**: Stanford3D点云较大，建议批次大小为16-32
+3. **训练时间**: Stanford3D数据集较大，训练可能需要较长时间
+4. **类别数量**: Stanford3D包含14个类别，确保模型输出层正确配置
 
 ## Kaggle竞赛提交
 
