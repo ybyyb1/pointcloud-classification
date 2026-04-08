@@ -142,6 +142,8 @@ kaggle/
 
 # Data files
 data/
+!data/datasets/
+!data/datasets/*.py
 *.h5
 *.hdf5
 *.npy

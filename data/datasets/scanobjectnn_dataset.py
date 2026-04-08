@@ -22,6 +22,105 @@ def is_kaggle_environment() -> bool:
     return os.path.exists('/kaggle') or 'KAGGLE_KERNEL_RUN_TYPE' in os.environ
 
 
+def find_kaggle_input_file(version: str) -> Optional[str]:
+    """
+    在Kaggle输入目录中查找数据集文件
+
+    Args:
+        version: 数据集版本（'main_split' 或 'pb_t50_rs_split'）
+
+    Returns:
+        Optional[str]: 找到的文件路径，如果未找到则返回None
+    """
+    if not is_kaggle_environment():
+        return None
+
+    # 可能的Kaggle输入目录
+    possible_dirs = [
+        '/kaggle/input/scanobjectnn',
+        '/kaggle/input/scan-object-nn',
+        '/kaggle/input/scanobjectnn-h5',
+        '/kaggle/input/scanobjectnn-dataset',
+    ]
+
+    # 可能的文件名模式
+    filename_patterns = [
+        f"{version}.h5",
+        f"{version}/training_objectdataset.h5",
+        f"{version}/testing_objectdataset.h5",
+        "training_objectdataset.h5",
+        "testing_objectdataset.h5",
+        "train.h5",
+        "test.h5",
+    ]
+
+    for input_dir in possible_dirs:
+        if not os.path.exists(input_dir):
+            continue
+
+        for pattern in filename_patterns:
+            file_path = os.path.join(input_dir, pattern)
+            if os.path.exists(file_path):
+                print(f"在Kaggle输入目录中找到文件: {file_path}")
+                return file_path
+
+        # 如果没有匹配模式，递归搜索.h5文件
+        import glob
+        h5_files = glob.glob(os.path.join(input_dir, "**", "*.h5"), recursive=True)
+        if h5_files:
+            # 优先选择包含版本名称的文件
+            for h5_file in h5_files:
+                if version in h5_file:
+                    print(f"在Kaggle输入目录中找到匹配版本的文件: {h5_file}")
+                    return h5_file
+            # 返回第一个找到的.h5文件
+            print(f"在Kaggle输入目录中找到文件: {h5_files[0]}")
+            return h5_files[0]
+
+    return None
+
+
+def validate_h5_file(filepath: str, min_size_kb: int = 10) -> bool:
+    """
+    验证h5文件是否有效
+
+    Args:
+        filepath: 文件路径
+        min_size_kb: 最小文件大小（KB），避免空文件或错误页面
+
+    Returns:
+        bool: 文件是否有效
+    """
+    import os
+    import h5py
+
+    # 检查文件是否存在
+    if not os.path.exists(filepath):
+        print(f"文件不存在: {filepath}")
+        return False
+
+    # 检查文件大小
+    file_size_kb = os.path.getsize(filepath) / 1024
+    if file_size_kb < min_size_kb:
+        print(f"文件太小 ({file_size_kb:.1f}KB)，可能无效: {filepath}")
+        return False
+
+    # 尝试打开文件
+    try:
+        with h5py.File(filepath, 'r') as f:
+            # 检查必要的数据集是否存在（对于ScanObjectNN）
+            required_datasets = ['train_points', 'train_labels', 'test_points', 'test_labels']
+            for ds in required_datasets:
+                if ds not in f:
+                    print(f"文件缺少必需的数据集 '{ds}': {filepath}")
+                    return False
+            print(f"h5文件验证通过: {filepath} (大小: {file_size_kb:.1f}KB)")
+            return True
+    except Exception as e:
+        print(f"h5文件无效: {filepath}, 错误: {e}")
+        return False
+
+
 def download_from_kaggle(dataset_name: str, version: str, output_dir: str) -> str:
     """
     从Kaggle数据集下载
@@ -46,34 +145,52 @@ def download_from_kaggle(dataset_name: str, version: str, output_dir: str) -> st
 
         # 初始化API
         api = KaggleApi()
-        api.authenticate()
+        try:
+            api.authenticate()
+        except Exception as auth_error:
+            print(f"Kaggle API认证失败，尝试继续下载（公开数据集可能不需要认证）: {auth_error}")
+            # 继续尝试下载，公开数据集可能不需要认证
 
         print(f"从Kaggle数据集 {dataset_name} 下载 {version}...")
 
-        # 下载数据集
-        api.dataset_download_files(dataset_name, path=output_dir, unzip=True)
+        # 下载数据集，添加force=True和quiet=True参数
+        api.dataset_download_files(dataset_name, path=output_dir, unzip=True, force=True, quiet=True)
 
         # 查找下载的文件
         h5_file = os.path.join(output_dir, f"{version}.h5")
 
-        if os.path.exists(h5_file):
-            print(f"Kaggle下载成功: {h5_file}")
-            return h5_file
-        else:
-            # 尝试在解压后的目录中查找
-            import glob
-            h5_files = glob.glob(os.path.join(output_dir, "**", "*.h5"), recursive=True)
-            for file in h5_files:
-                if version in file:
-                    print(f"找到文件: {file}")
-                    return file
-
-            # 如果没找到特定版本，返回第一个.h5文件
-            if h5_files:
-                print(f"使用找到的文件: {h5_files[0]}")
-                return h5_files[0]
+        # 验证找到的文件
+        def validate_and_return(file_path):
+            if validate_h5_file(file_path):
+                print(f"Kaggle下载成功且文件有效: {file_path}")
+                return file_path
             else:
-                raise FileNotFoundError(f"在Kaggle数据集中未找到.h5文件")
+                print(f"文件无效，跳过: {file_path}")
+                return None
+
+        if os.path.exists(h5_file):
+            valid_file = validate_and_return(h5_file)
+            if valid_file:
+                return valid_file
+
+        # 尝试在解压后的目录中查找
+        import glob
+        h5_files = glob.glob(os.path.join(output_dir, "**", "*.h5"), recursive=True)
+        # 优先选择包含版本名称的文件
+        for file in h5_files:
+            if version in file:
+                valid_file = validate_and_return(file)
+                if valid_file:
+                    return valid_file
+
+        # 如果没找到特定版本，验证所有文件
+        for file in h5_files:
+            valid_file = validate_and_return(file)
+            if valid_file:
+                return valid_file
+
+        # 所有文件都无效
+        raise FileNotFoundError(f"在Kaggle数据集中未找到有效的.h5文件")
 
     except Exception as e:
         print(f"Kaggle下载失败: {e}")
@@ -117,12 +234,23 @@ class ScanObjectNNDataset(BaseDataset):
         """
         下载ScanObjectNN数据集
         """
+        import os  # 确保os在本地可用
         print(f"下载ScanObjectNN数据集 ({self.version})...")
 
         # 创建数据目录
         os.makedirs(self.data_dir, exist_ok=True)
 
-        # 首先检查是否在Kaggle环境中
+        # 首先检查是否在Kaggle输入目录中已存在数据集文件
+        kaggle_input_file = find_kaggle_input_file(self.version)
+        if kaggle_input_file:
+            print(f"使用Kaggle输入目录中的文件: {kaggle_input_file}")
+            # 复制到目标位置
+            import shutil
+            shutil.copy2(kaggle_input_file, self.h5_file)
+            print(f"文件已复制到: {self.h5_file}")
+            return
+
+        # 其次检查是否在Kaggle环境中，尝试通过Kaggle API下载
         if is_kaggle_environment():
             try:
                 print("检测到Kaggle环境，尝试从Kaggle数据集下载...")
@@ -152,13 +280,44 @@ class ScanObjectNNDataset(BaseDataset):
                 else:
                     urls_to_try.append(f"{self.data_url}/{filename}")
 
+        # 修复：添加正确的GitHub URL格式
+        # ScanObjectNN数据集的实际结构可能是：h5_files/main_split/training_objectdataset.h5 等
+        # 尝试常见的文件命名模式
+        possible_filenames = [
+            f"{self.version}.h5",  # main_split.h5
+            f"training_objectdataset.h5",  # 可能是实际的文件名
+            f"testing_objectdataset.h5",
+            f"train.h5",
+            f"test.h5"
+        ]
+
         # 2. 添加常见的GitHub URL
         base_urls = [
             "https://github.com/hkust-vgd/scanobjectnn/raw/master/h5_files/",
             "https://raw.githubusercontent.com/hkust-vgd/scanobjectnn/master/h5_files/",
+            # 其他可能的镜像或备份源
+            "https://gitcode.net/mirrors/hkust-vgd/scanobjectnn/raw/master/h5_files/",
+            "https://hub.fastgit.xyz/hkust-vgd/scanobjectnn/raw/master/h5_files/",
         ]
         for base_url in base_urls:
             urls_to_try.append(f"{base_url}{filename}")
+
+        # 3. 尝试可能的直接文件URL（针对不同的文件名模式）
+        for file_pattern in possible_filenames:
+            urls_to_try.append(f"https://github.com/hkust-vgd/scanobjectnn/raw/master/h5_files/{file_pattern}")
+            urls_to_try.append(f"https://raw.githubusercontent.com/hkust-vgd/scanobjectnn/master/h5_files/{file_pattern}")
+
+        # 4. 从环境变量读取额外的URL
+        extra_urls = os.environ.get('SCANOBJECTNN_EXTRA_URLS', '')
+        if extra_urls:
+            for url in extra_urls.split(';'):
+                url = url.strip()
+                if url:
+                    urls_to_try.append(url)
+
+        # 去重
+        urls_to_try = list(dict.fromkeys(urls_to_try))
+        print(f"将尝试以下URL下载数据集（共{len(urls_to_try)}个）:")
 
         last_exception = None
 
@@ -167,7 +326,15 @@ class ScanObjectNNDataset(BaseDataset):
                 print(f"尝试从 {url} 下载...")
                 urllib.request.urlretrieve(url, self.h5_file)
                 print(f"下载完成: {self.h5_file}")
-                return
+                # 验证下载的文件
+                if validate_h5_file(self.h5_file):
+                    print(f"文件验证成功: {self.h5_file}")
+                    return
+                else:
+                    print(f"下载的文件无效，删除并尝试下一个URL...")
+                    if os.path.exists(self.h5_file):
+                        os.remove(self.h5_file)
+                    continue
             except Exception as e:
                 print(f"下载失败: {e}")
                 last_exception = e
@@ -182,7 +349,49 @@ class ScanObjectNNDataset(BaseDataset):
         print("或者使用Kaggle数据集:")
         print(f"   !kaggle datasets download -d hkustvgd/scanobjectnn")
         print(f"   !unzip scanobjectnn.zip -d {self.data_dir}")
-        raise last_exception
+        # 检查是否允许创建虚拟数据集
+        allow_dummy = os.environ.get('SCANOBJECTNN_ALLOW_DUMMY', 'false').lower() == 'true'
+        if allow_dummy:
+            print("警告: 所有下载尝试失败，将创建虚拟数据集用于测试。")
+            print("警告: 虚拟数据集仅用于功能测试，不能用于实际训练！")
+            self._create_dummy_h5()
+            print(f"虚拟数据集已创建: {self.h5_file}")
+            return
+        else:
+            print("提示: 如需创建虚拟数据集进行测试，请设置环境变量 SCANOBJECTNN_ALLOW_DUMMY=true")
+            raise last_exception
+
+    def _create_dummy_h5(self) -> None:
+        """
+        创建虚拟数据集用于测试
+        生成随机点云数据，模拟ScanObjectNN数据格式
+        """
+        print("创建虚拟ScanObjectNN数据集...")
+        import h5py
+        import numpy as np
+
+        # 创建小的数据集：10个训练样本，5个测试样本，每个样本1024个点，15个类别
+        n_train = 10
+        n_test = 5
+        n_points = 1024
+        n_classes = len(self.class_names)
+
+        # 生成随机点云（在单位球内）
+        train_points = np.random.randn(n_train, n_points, 3).astype(np.float32)
+        train_labels = np.random.randint(0, n_classes, size=(n_train, 1), dtype=np.int32)
+
+        test_points = np.random.randn(n_test, n_points, 3).astype(np.float32)
+        test_labels = np.random.randint(0, n_classes, size=(n_test, 1), dtype=np.int32)
+
+        # 保存为h5文件
+        with h5py.File(self.h5_file, 'w') as f:
+            f.create_dataset('train_points', data=train_points)
+            f.create_dataset('train_labels', data=train_labels)
+            f.create_dataset('test_points', data=test_points)
+            f.create_dataset('test_labels', data=test_labels)
+
+        print(f"虚拟数据集已保存到: {self.h5_file}")
+        print(f"训练样本: {n_train}, 测试样本: {n_test}, 点数: {n_points}, 类别: {n_classes}")
 
     def preprocess(self) -> None:
         """
