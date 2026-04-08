@@ -277,8 +277,16 @@ def main():
     print("点云分类系统 - 系统验证")
     print("=" * 60)
 
+    # 将项目根目录添加到Python路径
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)  # scripts目录的父目录
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+        print(f"项目根目录添加到Python路径: {project_root}")
+
     print(f"工作目录: {os.getcwd()}")
     print(f"Python路径: {sys.executable}")
+    print(f"Python路径列表: {sys.path[:3]}...")
 
     checks = [
         ("Python版本", check_python_version),
