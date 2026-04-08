@@ -71,6 +71,11 @@ print("\n安装依赖...")
 !pip install -r requirements.txt
 print("✅ 依赖安装完成")
 
+# 修复GPU兼容性问题
+print("\n检查GPU兼容性...")
+!python scripts/kaggle_gpu_fix.py
+print("✅ GPU兼容性检查完成")
+
 # 单元格2: 设置Kaggle API密钥（使用你的凭证）
 import os
 os.environ['KAGGLE_USERNAME'] = 'ybyyb1'
@@ -116,6 +121,9 @@ os.chdir('/kaggle/working/pointcloud-classification')
 
 # 安装依赖
 !pip install -r requirements.txt
+
+# 修复GPU兼容性问题
+!python scripts/kaggle_gpu_fix.py
 
 # 设置Kaggle环境
 !python scripts/setup_kaggle_github.py
@@ -719,6 +727,30 @@ sys.path.insert(0, '/kaggle/working/pointcloud-classification')
 或手动修复验证脚本：
 ```python
 # 编辑 scripts/verify_system.py，将 "创建虚拟模型" 测试改为使用具体模型
+```
+
+### 问题: PyTorch安装失败 "ERROR: No matching distribution found for torch==2.0.1"
+**说明**: Kaggle环境中的CUDA版本为11.8，而torch==2.0.1可能不兼容。Kaggle可用的PyTorch版本通常从2.2.0+cu118开始。
+
+**解决方案**:
+1. **更新安装命令**: 使用兼容的版本，例如torch==2.2.0
+```python
+# 卸载现有版本（如果有）
+!pip uninstall torch torchvision torchaudio -y
+
+# 安装兼容版本
+!pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 --index-url https://download.pytorch.org/whl/cu118
+```
+
+2. **使用GPU修复脚本**: 项目提供了自动修复脚本
+```python
+# 运行GPU兼容性修复脚本
+!python scripts/kaggle_gpu_fix.py
+```
+
+3. **如果仍然失败，尝试CPU版本**:
+```python
+!pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 --index-url https://download.pytorch.org/whl/cpu
 ```
 
 ### 问题: CUDA兼容性警告 (Tesla P100-PCIE-16GB with CUDA capability sm_60)

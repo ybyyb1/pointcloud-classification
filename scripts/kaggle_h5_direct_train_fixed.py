@@ -363,7 +363,7 @@ def main():
         print("安装兼容的PyTorch版本...")
         # Kaggle P100 GPU (sm_60) 兼容的PyTorch版本
         !pip uninstall torch torchvision -y
-        !pip install torch==2.0.1 torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cu118
+        !pip install torch==2.2.0 torchvision==0.17.0 --index-url https://download.pytorch.org/whl/cu118
         print("✅ PyTorch重新安装完成")
         print("请重启kernel并重新运行脚本")
         return

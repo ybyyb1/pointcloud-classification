@@ -17,8 +17,8 @@ def install_minimal_deps():
 
     # Kaggle环境通常已安装这些包，但为确保安装最小集合
     core_packages = [
-        "torch>=2.0.0",
-        "torchvision>=0.15.0",
+        "torch==2.2.0",
+        "torchvision==0.17.0",
         "numpy>=1.21.0",
         "h5py>=3.7.0",
         "scikit-learn>=1.0.0",
