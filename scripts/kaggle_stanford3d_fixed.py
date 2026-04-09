@@ -6,6 +6,7 @@
 
 import os
 import sys
+import subprocess
 import warnings
 import shutil
 
@@ -35,7 +36,7 @@ if not os.path.exists(input_dir):
 
 # 3. 列出输入目录内容
 print(f"\n输入目录内容:")
-!ls -la {input_dir}
+subprocess.run(f"ls -la {input_dir}", shell=True)
 
 # 4. 复制文件到可写目录
 print(f"\n复制文件到可写目录: {working_data_dir}")
@@ -90,9 +91,9 @@ if os.path.exists('pointcloud-classification'):
     print("删除已存在的项目目录...")
     shutil.rmtree('pointcloud-classification')
 
-!git clone https://github.com/ybyyb1/pointcloud-classification.git
-%cd pointcloud-classification
-!pip install -r requirements.txt
+subprocess.run(["git", "clone", "https://github.com/ybyyb1/pointcloud-classification.git"], check=False)
+os.chdir('pointcloud-classification')
+subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=False)
 
 # 8. 创建临时修正 - 防止在只读目录中创建文件夹
 print("\n应用临时修正...")
@@ -201,7 +202,7 @@ print(f"执行命令:\n{train_cmd}")
 print("\n" + "=" * 60)
 
 # 执行训练
-!{train_cmd}
+subprocess.run(train_cmd, shell=True)
 
 print("\n" + "=" * 60)
 print("🎉 训练完成!")

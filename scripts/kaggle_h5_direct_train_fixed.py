@@ -6,6 +6,7 @@ Kaggle HDF5直接训练脚本 - 修复版
 
 import os
 import sys
+import subprocess
 import argparse
 import numpy as np
 import h5py
@@ -362,8 +363,8 @@ def main():
     if args.install_pytorch:
         print("安装兼容的PyTorch版本...")
         # Kaggle P100 GPU (sm_60) 兼容的PyTorch版本
-        !pip uninstall torch torchvision -y
-        !pip install torch==2.2.0 torchvision==0.17.0 --index-url https://download.pytorch.org/whl/cu118
+        subprocess.run([sys.executable, "-m", "pip", "uninstall", "torch", "torchvision", "-y"], check=False)
+        subprocess.run([sys.executable, "-m", "pip", "install", "torch==2.2.0", "torchvision==0.17.0", "--index-url", "https://download.pytorch.org/whl/cu118"], check=False)
         print("✅ PyTorch重新安装完成")
         print("请重启kernel并重新运行脚本")
         return

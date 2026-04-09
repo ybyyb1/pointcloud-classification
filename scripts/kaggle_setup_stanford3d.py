@@ -6,6 +6,7 @@ Kaggle Stanford3D数据集设置脚本
 
 import os
 import sys
+import subprocess
 import shutil
 import glob
 
@@ -29,7 +30,7 @@ def setup_stanford3d_for_kaggle():
     if not os.path.exists(input_dir):
         print(f"❌ 错误: 输入目录不存在: {input_dir}")
         print("\n可用的输入目录:")
-        !ls -la /kaggle/input/
+        subprocess.run("ls -la /kaggle/input/", shell=True)
         return False
 
     # 3. 列出输入文件
