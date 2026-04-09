@@ -46,6 +46,22 @@ def check_pytorch_installation():
     print("检查PyTorch安装")
     print("=" * 60)
 
+    # 先检查并修复NumPy问题
+    try:
+        import numpy
+        print(f"✅ NumPy已安装: {numpy.__version__}")
+    except Exception as e:
+        print(f"⚠️ NumPy检查失败: {e}")
+        print("尝试修复NumPy...")
+        try:
+            subprocess.run([sys.executable, "-m", "pip", "uninstall", "numpy", "-y"],
+                          capture_output=True, text=True)
+            subprocess.run([sys.executable, "-m", "pip", "install", "numpy==1.24.3"],
+                          check=True)
+            print("✅ NumPy重新安装完成")
+        except Exception as np_error:
+            print(f"❌ NumPy修复失败: {np_error}")
+
     try:
         import torch
         print(f"✅ PyTorch已安装: {torch.__version__}")
