@@ -8,6 +8,29 @@
 2. **GitHub 仓库**: 项目应在GitHub上 (https://github.com/ybyyb1/pointcloud-classification)
 3. **Kaggle Notebook**: 在Kaggle上创建新notebook (https://www.kaggle.com/code)
 
+## 最简方法（解决NumPy错误）
+
+如果遇到NumPy初始化错误 (`Failed to initialize NumPy: _ARRAY_API not found`)，使用此方法：
+
+```python
+# 单元格1: 最简启动（解决NumPy问题）
+import os
+os.chdir('/kaggle/working')
+
+# 克隆仓库
+!git clone https://github.com/ybyyb1/pointcloud-classification.git
+%cd pointcloud-classification
+
+# 使用简化启动脚本（自动处理NumPy问题）
+!python scripts/kaggle_start.py
+```
+
+这个脚本会自动：
+1. 修复NumPy初始化错误
+2. 安装兼容的依赖版本
+3. 下载Stanford3D数据集
+4. 开始训练
+
 ## 快速开始（推荐）
 
 在Kaggle Notebook中运行以下代码块：
@@ -706,6 +729,30 @@ torch.backends.cudnn.benchmark = True
 import sys
 print(sys.path)
 sys.path.insert(0, '/kaggle/working/pointcloud-classification')
+```
+
+### 问题: NumPy初始化错误 "Failed to initialize NumPy: _ARRAY_API not found"
+**说明**: 这个错误通常发生在NumPy版本不兼容或安装损坏时，特别是在Kaggle环境中导入PyTorch时出现。
+
+**解决方案**:
+1. **使用简化启动脚本（推荐）**:
+```python
+!python scripts/kaggle_start.py
+```
+
+2. **手动修复NumPy**:
+```python
+# 重新安装NumPy
+!pip uninstall numpy -y
+!pip install numpy==1.24.3
+
+# 重新启动kernel（右上角 Kernel → Restart Kernel）
+```
+
+3. **跳过GPU检查直接训练**:
+```python
+# 使用修复后的HDF5训练脚本
+!python scripts/kaggle_h5_direct_train_fixed.py --cpu
 ```
 
 ### 问题: 数据集下载失败
